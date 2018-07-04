@@ -19,8 +19,9 @@ SAVE_CACHE = True
 
 
 LatexExpression = collections.namedtuple(
-            'LatexExpression',
-            ['display_mode', 'expression'])
+    'LatexExpression',
+    ['display_mode', 'expression']
+)
 
 
 tokens = (
