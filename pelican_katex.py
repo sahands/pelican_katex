@@ -4,18 +4,24 @@ KaTeX Math Processor for Pelican
 ================================
 """
 
-import codecs
-import pickle
-import json
+import collections
 import html
+import json
 import logging
 import os
+import ply.lex
 import subprocess
 
 
 LOG = logging.getLogger(__name__)
 INCLUDE_TYPES = ['.html']
 SAVE_CACHE = True
+
+
+LatexExpression = collections.namedtuple(
+            'LatexExpression',
+            ['display_mode', 'expression'])
+
 
 tokens = (
     'LATEX_INLINE',
@@ -29,7 +35,7 @@ def t_LATEX_INLINE(t):
     global lexer
     groups = lexer.lexmatch.groups()
     if len(groups) > 1:
-        t.value = groups[1]
+        t.value = LatexExpression(False, groups[1])
     return t
 
 
@@ -38,7 +44,7 @@ def t_LATEX_DISPLAY(t):
     global lexer
     groups = lexer.lexmatch.groups()
     if len(groups) > 3:
-        t.value = groups[3]
+        t.value = LatexExpression(True, groups[3])
     return t
 
 
@@ -50,8 +56,7 @@ def t_error(t):
     t.lexer.skip(1)
 
 
-import ply.lex as lex
-lexer = lex.lex()
+lexer = ply.lex.lex()
 
 
 def load_cache():
@@ -101,7 +106,9 @@ def katex(latex, display_mode, katex_cache):
     args = ['katex']
     if display_mode:
         args.append('-d')
-    katex = subprocess.Popen(args=args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    katex = subprocess.Popen(
+                args=args, stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE)
     katex.stdin.write(latex.encode('utf-8'))
     katex.stdin.close()
     result = katex.stdout.read().decode('utf-8')
@@ -120,8 +127,9 @@ def write_output(content, katex_cache, output_file):
         if tok.type == 'HTML':
             output_file.write(tok.value)
         else:
-            display_mode = tok.type != 'LATEX_INLINE'
-            katex_result = katex(html.unescape(tok.value), display_mode, katex_cache)
+            katex_result = katex(
+                        html.unescape(tok.value.expression),
+                        tok.value.display_mode, katex_cache)
             output_file.write(katex_result)
 
 
