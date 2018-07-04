@@ -15,7 +15,15 @@ import subprocess
 
 LOG = logging.getLogger(__name__)
 INCLUDE_TYPES = ['.html']
-SAVE_CACHE = True
+USE_PERSISTENT_CACHE = True
+
+# Use these if you use rst and docutils with LaTeX output.
+INLINE_LATEX_REGEX = r'<tt\s+class="math">([\S\s]+?)</tt>'
+DISPLAY_LATEX_REGEX = r'<pre\s+class="math">([\S\s]+?)</pre>'
+
+# Use these if you use MathJax style \( and $$
+# INLINE_LATEX_REGEX = r'\\\(([\S\s]+?)\\\)'
+# DISPLAY_LATEX_REGEX = r'\$\$([\S\s]+?)\$\$'
 
 
 LatexExpression = collections.namedtuple(
@@ -31,8 +39,8 @@ tokens = (
 )
 
 
+@ply.lex.TOKEN(INLINE_LATEX_REGEX)
 def t_LATEX_INLINE(t):
-    r'<tt\s+class="math">([\S\s]+?)</tt>'
     global lexer
     groups = lexer.lexmatch.groups()
     if len(groups) > 1:
@@ -40,8 +48,8 @@ def t_LATEX_INLINE(t):
     return t
 
 
+@ply.lex.TOKEN(DISPLAY_LATEX_REGEX)
 def t_LATEX_DISPLAY(t):
-    r'<pre\s+class="math">([\S\s]+?)</pre>'
     global lexer
     groups = lexer.lexmatch.groups()
     if len(groups) > 3:
@@ -80,10 +88,10 @@ def save_cache(katex_cache):
 
 def process_files(pelican):
     """
-    Preprocess a generated HTML file to replace LaTex  with math HTML
+    Process a generated HTML file to replace LaTeX  with math HTML
     """
     katex_cache = {}
-    if SAVE_CACHE:
+    if USE_PERSISTENT_CACHE:
         katex_cache = load_cache()
         LOG.info('KaTeX: Initialized katex cache with {0} entries.'
                  .format(len(katex_cache)))
@@ -94,7 +102,7 @@ def process_files(pelican):
                 filepath = os.path.join(dirpath, name)
                 process_file(filepath, katex_cache)
 
-    if SAVE_CACHE:
+    if USE_PERSISTENT_CACHE:
         save_cache(katex_cache)
         LOG.info('KaTeX: Saved katex cache with {0} entries.'
                  .format(len(katex_cache)))
